@@ -10,7 +10,6 @@ class Customer {
     `;
     // FIX: Wrap the delivery_addresses in JSON.stringify
     const safeAddresses = JSON.stringify(customerData.delivery_addresses || []);
-    
     const result = await db.query(query, [userId, safeAddresses]);
     return result.rows[0];
   }
