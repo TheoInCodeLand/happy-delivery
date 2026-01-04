@@ -273,3 +273,32 @@ exports.getManagerProfile = async (req, res) => {
     });
   }
 };
+
+exports.getMenuItem = async (req, res) => {
+  try {
+    const item = await Menu.getMenuItemById(req.params.itemId);
+    if (!item) return res.status(404).json({ success: false, error: 'Item not found' });
+    res.json({ success: true, data: item });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// Update menu item
+exports.updateMenuItem = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    
+    // Security: Verify ownership first
+    const managerProfile = await RestaurantManager.findByUserId(req.user.id);
+    const restaurants = await Restaurant.findByManager(managerProfile.id);
+    if (!restaurants.some(r => r.id === restaurantId)) {
+      return res.status(403).json({ success: false, error: 'Not authorized' });
+    }
+
+    const updatedItem = await Menu.updateMenuItem(req.params.itemId, req.body);
+    res.json({ success: true, data: updatedItem });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

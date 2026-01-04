@@ -15,12 +15,10 @@ const orderRoutes = require('./src/routes/orderRoutes');
 const driverRoutes = require('./src/routes/driverRoutes');
 const paymentRoutes = require('./src/routes/paymentRoutes');
 const userRoutes = require('./src/routes/userRoutes');
-// const managerRoutes = require('./src/routes/managerRoutes');
 
 // Import middleware
 const { errorHandler } = require('./src/middleware/errorHandler');
 
-// Initialize Express app
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -32,14 +30,12 @@ const io = socketIo(server, {
   }
 });
 
-// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100, // Limit each IP to 100 requests per windowMs.
   message: 'Too many requests from this IP, please try again later.'
 });
 
-// Apply rate limiting to API routes
 app.use('/api/', limiter);
 
 // Middleware

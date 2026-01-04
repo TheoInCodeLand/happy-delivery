@@ -1,5 +1,6 @@
 const Order = require('../models/Order');
 const Customer = require('../models/Customer');
+const Driver = require('../models/Driver');
 
 // Create order
 exports.createOrder = async (req, res) => {

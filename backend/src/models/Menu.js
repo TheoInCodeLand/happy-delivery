@@ -1,6 +1,7 @@
 const db = require('../config/database');
 
 class Menu {
+
   // Create menu category
   static async create(restaurantId, menuData) {
     const { name, description, is_active = true, display_order = 0 } = menuData;
@@ -206,7 +207,13 @@ class Menu {
     const result = await db.query(query, [`%${searchTerm}%`, lng, lat, radiusKm]);
     return result.rows;
   }
-}
 
+  // Get single menu item by ID (For editing)
+  static async getMenuItemById(itemId) {
+    const query = 'SELECT * FROM menu_items WHERE id = $1';
+    const result = await db.query(query, [itemId]);
+    return result.rows[0];
+  }
+}
 
 module.exports = Menu;

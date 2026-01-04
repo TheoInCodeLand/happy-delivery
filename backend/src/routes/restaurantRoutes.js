@@ -15,19 +15,19 @@ const {
   addMenuItem,
   getStats,
   getManagerProfile,
-  updateRestaurant
+  updateRestaurant,
+  getMenuItem,
+  updateMenuItem
 } = require('../controllers/restaurantController');
 const { auth, authorize } = require('../middleware/auth');
 
 // 1. PUBLIC ROUTES - Specific paths first
 router.get('/search', searchRestaurants);
 
-// 2. PROTECTED ROUTES - Specific paths first...
 router.get('/stats', auth, authorize('restaurant_manager'), getStats); 
 router.get('/profile', auth, authorize('restaurant_manager'), getManagerProfile); // MUST BE ABOVE /:id
 router.get('/my/restaurants', auth, authorize('restaurant_manager'), getMyRestaurants);
 
-// 2. THIS WILL NOW WORK
 router.post('/upload', auth, upload.single('image'), (req, res) => {
   try {
     if (!req.file) {
@@ -42,14 +42,15 @@ router.post('/upload', auth, upload.single('image'), (req, res) => {
   }
 });
 
-// 3. DYNAMIC ROUTES - MUST BE LAST
 router.get('/:id', getRestaurant);
 router.get('/:restaurantId/menus', getRestaurantMenus);
 
-// 4. POST/PUT ROUTES
 router.post('/', auth, authorize('restaurant_manager'), createRestaurant);
 router.put('/:id', auth, authorize('restaurant_manager'), updateRestaurant);
 router.post('/:restaurantId/menus', auth, authorize('restaurant_manager'), createMenu);
 router.post('/:restaurantId/menus/:menuId/items', auth, authorize('restaurant_manager'), addMenuItem);
+
+router.get('/:restaurantId/menus/:menuId/items/:itemId', auth, authorize('restaurant_manager'), getMenuItem);
+router.put('/:restaurantId/menus/:menuId/items/:itemId', auth, authorize('restaurant_manager'), updateMenuItem);
 
 module.exports = router;

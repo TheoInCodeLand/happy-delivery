@@ -194,13 +194,20 @@ class Driver {
         o.*,
         r.name as restaurant_name,
         r.address as restaurant_address,
-        r.location as restaurant_location,
+        -- Extract readable coordinates for the frontend if needed
+        ST_X(r.location::geometry) as restaurant_longitude,
+        ST_Y(r.location::geometry) as restaurant_latitude,
         c.first_name as customer_first_name,
         c.last_name as customer_last_name,
+        
+        -- FIX: Calculate distance using the Geometry column directly
         ST_Distance(
+          -- Driver location is likely a native POINT (supports [0]), cast to PostGIS point then geography
           ST_SetSRID(ST_MakePoint(d.current_location[0], d.current_location[1]), 4326)::geography,
-          ST_SetSRID(ST_MakePoint(r.location[0], r.location[1]), 4326)::geography
+          -- Restaurant location is already GEOMETRY, just cast to geography (No subscripts!)
+          r.location::geography
         ) as distance_to_restaurant,
+        
         EXTRACT(EPOCH FROM (q.expires_at - NOW())) as time_left_seconds
       FROM driver_order_queue q
       JOIN orders o ON q.order_id = o.id

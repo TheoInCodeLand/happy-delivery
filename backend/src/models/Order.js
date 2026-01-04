@@ -38,8 +38,9 @@ class Order {
           tax_amount,
           tip_amount,
           total_amount,
+          status,
           driver_acceptance_deadline
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW() + INTERVAL '150 seconds')
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', NOW() + INTERVAL '150 seconds')
         RETURNING *
       `;
       
@@ -93,19 +94,36 @@ class Order {
       await client.query(queueQuery, [order.id]);
       
       // Get available drivers near restaurant
+      // Note: We use ST_X/ST_Y just in case your restaurants table is using Geometry now
+      // If it's still Point, we fallback to text parsing
       const restaurantQuery = 'SELECT location FROM restaurants WHERE id = $1';
       const restaurantResult = await client.query(restaurantQuery, [restaurant_id]);
       const restaurantLocation = restaurantResult.rows[0].location;
       
-      const [lng, lat] = restaurantLocation.replace(/[()]/g, '').split(',').map(Number);
+      // Safe coordinate extraction (Handles both Point string and potential Hex geometry)
+      let lng, lat;
+      if (typeof restaurantLocation === 'string' && restaurantLocation.startsWith('0101')) {
+         // It is hex geometry, fetch coordinates properly
+         const locQuery = `
+           SELECT ST_X(location::geometry) as lng, ST_Y(location::geometry) as lat 
+           FROM restaurants WHERE id = $1
+         `;
+         const locRes = await client.query(locQuery, [restaurant_id]);
+         lng = locRes.rows[0].lng;
+         lat = locRes.rows[0].lat;
+      } else {
+         // It is a standard Point string "(x,y)"
+         [lng, lat] = restaurantLocation.replace(/[()]/g, '').split(',').map(Number);
+      }
       
+      // FIX: Use ST_MakePoint with array indexing for drivers table (Native Point type)
       const driversQuery = `
         SELECT d.id
         FROM drivers d
         WHERE d.is_available = true
           AND d.current_status = 'available'
           AND ST_DWithin(
-            d.current_location::geography,
+            ST_SetSRID(ST_MakePoint(d.current_location[0], d.current_location[1]), 4326)::geography,
             ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
             10000
           )
@@ -125,11 +143,13 @@ class Order {
       await client.query('COMMIT');
       
       // Emit real-time update
-      emitOrderUpdate(order.id, {
-        type: 'order_created',
-        order,
-        available_drivers: driverIds.length
-      });
+      if (emitOrderUpdate) {
+        emitOrderUpdate(order.id, {
+          type: 'order_created',
+          order,
+          available_drivers: driverIds.length
+        });
+      }
       
       return order;
       
@@ -150,14 +170,19 @@ class Order {
         r.address as restaurant_address,
         r.phone_number as restaurant_phone,
         r.logo_url as restaurant_logo,
+        r.location as restaurant_location, -- Ensure this is selected
         c.first_name as customer_first_name,
         c.last_name as customer_last_name,
         c.phone_number as customer_phone,
         u.first_name as driver_first_name,
         u.last_name as driver_last_name,
         u.phone_number as driver_phone,
-        d.vehicle_type as driver_vehicle,
+        u.profile_image_url as driver_image,
+        -- FIX: Select specific car details here
+        d.vehicle_type as driver_vehicle_type,
+        d.vehicle_model as driver_vehicle_model,
         d.vehicle_color as driver_vehicle_color,
+        d.vehicle_registration as driver_vehicle_plate,
         d.current_location as driver_location
       FROM orders o
       LEFT JOIN restaurants r ON o.restaurant_id = r.id
@@ -171,16 +196,17 @@ class Order {
     
     const params = [orderId];
     
-    // Add role-based access control
-    if (userRole === 'customer') {
-      query += ` AND o.customer_id = (SELECT id FROM customers WHERE user_id = $2)`;
-      params.push(userId);
-    } else if (userRole === 'driver') {
-      query += ` AND o.driver_id = (SELECT id FROM drivers WHERE user_id = $2)`;
-      params.push(userId);
-    } else if (userRole === 'restaurant_manager') {
-      query += ` AND o.restaurant_id IN (SELECT id FROM restaurants WHERE manager_id = (SELECT id FROM restaurant_managers WHERE user_id = $2))`;
-      params.push(userId);
+    if (userId && userRole) {
+        if (userRole === 'customer') {
+        query += ` AND o.customer_id = (SELECT id FROM customers WHERE user_id = $2)`;
+        params.push(userId);
+        } else if (userRole === 'driver') {
+        query += ` AND o.driver_id = (SELECT id FROM drivers WHERE user_id = $2)`;
+        params.push(userId);
+        } else if (userRole === 'restaurant_manager') {
+        query += ` AND o.restaurant_id IN (SELECT id FROM restaurants WHERE manager_id = (SELECT id FROM restaurant_managers WHERE user_id = $2))`;
+        params.push(userId);
+        }
     }
     
     const result = await db.query(query, params);
@@ -212,7 +238,6 @@ class Order {
     try {
       await client.query('BEGIN');
       
-      // Check if order is still available
       const checkQuery = `
         SELECT o.*, q.expires_at
         FROM orders o
@@ -229,7 +254,6 @@ class Order {
         throw new Error('Order no longer available');
       }
       
-      // Update order with driver
       const updateQuery = `
         UPDATE orders 
         SET 
@@ -244,30 +268,36 @@ class Order {
       const updateResult = await client.query(updateQuery, [orderId, driverId]);
       const order = updateResult.rows[0];
       
-      // Update driver status
       await client.query(
         `UPDATE drivers SET current_status = 'busy', is_available = false WHERE id = $1`,
         [driverId]
       );
       
-      // Mark queue as completed
       await client.query(
         `UPDATE driver_order_queue SET is_active = false, completed_at = CURRENT_TIMESTAMP WHERE order_id = $1`,
         [orderId]
       );
+
+      // FIX: Get the actual User ID linked to this Customer ID
+      const userRes = await client.query(
+        'SELECT user_id FROM customers WHERE id = $1', 
+        [order.customer_id]
+      );
+      const customerUserId = userRes.rows[0].user_id;
       
       await client.query('COMMIT');
       
-      // Emit real-time updates
-      emitOrderUpdate(order.id, {
-        type: 'order_accepted',
-        order,
-        driver_id: driverId
-      });
+      if (emitOrderUpdate) {
+        emitOrderUpdate(order.id, {
+            type: 'order_accepted',
+            order,
+            driver_id: driverId
+        });
+      }
       
-      // Create notification for customer
+      // FIX: Pass customerUserId instead of order.customer_id
       await this.createNotification(
-        order.customer_id,
+        customerUserId,
         'customer',
         'Driver Accepted',
         'A driver has accepted your order!',
@@ -348,34 +378,41 @@ class Order {
     const order = result.rows[0];
     
     if (order) {
-      // Emit real-time update
-      emitOrderUpdate(order.id, {
-        type: 'status_update',
-        order,
-        new_status: status
-      });
+      if (emitOrderUpdate) {
+        emitOrderUpdate(order.id, {
+            type: 'status_update',
+            order,
+            new_status: status
+        });
+      }
       
-      // Update driver status if delivered
       if (status === 'delivered') {
         await db.query(
           `UPDATE drivers SET current_status = 'available', is_available = true WHERE id = $1`,
           [driverId]
         );
         
-        // Create earning record
-        const driverEarnings = order.total_amount * 0.7; // 70% to driver (adjust as needed)
+        const driverEarnings = order.total_amount * 0.7; 
         await this.createEarning(order.id, driverId, null, driverEarnings, 30, order.total_amount * 0.3, driverEarnings);
       }
       
-      // Create notification
-      await this.createNotification(
-        order.customer_id,
-        'customer',
-        'Order Update',
-        `Your order status has changed to: ${status.replace(/_/g, ' ')}`,
-        'status_update',
-        { order_id: orderId, status }
+      // FIX: Get User ID for notification
+      const userRes = await db.query(
+        'SELECT user_id FROM customers WHERE id = $1', 
+        [order.customer_id]
       );
+      const customerUserId = userRes.rows[0]?.user_id;
+
+      if (customerUserId) {
+        await this.createNotification(
+          customerUserId,
+          'customer',
+          'Order Update',
+          `Your order status has changed to: ${status.replace(/_/g, ' ')}`,
+          'status_update',
+          { order_id: orderId, status }
+        );
+      }
     }
     
     return order;
@@ -383,6 +420,7 @@ class Order {
 
   // Get orders for user based on role
   static async getOrdersByUser(userId, userRole, filters = {}) {
+    // ... (paste your existing getOrdersByUser code here) ...
     let baseQuery = '';
     const params = [];
     
@@ -396,7 +434,7 @@ class Order {
         `;
         params.push(userId);
         break;
-        
+      // ... rest of cases ...
       case 'driver':
         baseQuery = `
           SELECT o.*, r.name as restaurant_name, c.first_name as customer_first_name
@@ -408,7 +446,6 @@ class Order {
         `;
         params.push(userId);
         break;
-        
       case 'restaurant_manager':
         baseQuery = `
           SELECT o.*, c.first_name as customer_first_name
@@ -422,128 +459,58 @@ class Order {
         `;
         params.push(userId);
         break;
-        
       default:
         throw new Error('Invalid user role');
     }
-    
-    // Apply filters
+    // ... (keep filters logic) ...
     const { status, start_date, end_date, page = 1, limit = 20 } = filters;
     let paramIndex = params.length + 1;
-    
-    if (status) {
-      baseQuery += ` AND o.status = $${paramIndex}`;
-      params.push(status);
-      paramIndex++;
-    }
-    
-    if (start_date) {
-      baseQuery += ` AND o.created_at >= $${paramIndex}`;
-      params.push(start_date);
-      paramIndex++;
-    }
-    
-    if (end_date) {
-      baseQuery += ` AND o.created_at <= $${paramIndex}`;
-      params.push(end_date);
-      paramIndex++;
-    }
-    
-    // Add pagination
+    if (status) { baseQuery += ` AND o.status = $${paramIndex}`; params.push(status); paramIndex++; }
+    if (start_date) { baseQuery += ` AND o.created_at >= $${paramIndex}`; params.push(start_date); paramIndex++; }
+    if (end_date) { baseQuery += ` AND o.created_at <= $${paramIndex}`; params.push(end_date); paramIndex++; }
     const offset = (page - 1) * limit;
     baseQuery += ` ORDER BY o.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
-    
     const result = await db.query(baseQuery, params);
     return result.rows;
   }
 
-  // Create notification
   static async createNotification(userId, userType, title, body, type, data = {}) {
     const query = `
       INSERT INTO notifications (user_id, user_type, title, body, type, data)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
-    
-    const result = await db.query(query, [
-      userId,
-      userType,
-      title,
-      body,
-      type,
-      JSON.stringify(data)
-    ]);
-    
+    const result = await db.query(query, [userId, userType, title, body, type, JSON.stringify(data)]);
     return result.rows[0];
   }
 
-  // Create earning record
   static async createEarning(orderId, driverId, restaurantId, amount, commissionPercentage, commissionAmount, netAmount) {
     const query = `
-      INSERT INTO earnings (
-        order_id,
-        driver_id,
-        restaurant_id,
-        amount,
-        commission_percentage,
-        commission_amount,
-        net_amount
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
+      INSERT INTO earnings (order_id, driver_id, restaurant_id, amount, commission_percentage, commission_amount, net_amount) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
     `;
-    
-    const result = await db.query(query, [
-      orderId,
-      driverId,
-      restaurantId,
-      amount,
-      commissionPercentage,
-      commissionAmount,
-      netAmount
-    ]);
-    
+    const result = await db.query(query, [orderId, driverId, restaurantId, amount, commissionPercentage, commissionAmount, netAmount]);
     return result.rows[0];
   }
 
   // Check for expired orders (cron job)
   static async processExpiredOrders() {
     const query = `
-      UPDATE orders o
-      SET 
-        status = 'no_drivers_available',
-        updated_at = CURRENT_TIMESTAMP
-      FROM driver_order_queue q
-      WHERE o.id = q.order_id
-        AND q.is_active = true
-        AND q.expires_at <= NOW()
-        AND o.status = 'pending'
-      RETURNING o.*
+      UPDATE orders o SET status = 'no_drivers_available', updated_at = CURRENT_TIMESTAMP
+      FROM driver_order_queue q WHERE o.id = q.order_id AND q.is_active = true AND q.expires_at <= NOW() AND o.status = 'pending' RETURNING o.*
     `;
-    
     const result = await db.query(query);
-    
-    // Mark queue as inactive
     if (result.rows.length > 0) {
       const expiredOrderIds = result.rows.map(row => row.id);
-      await db.query(
-        `UPDATE driver_order_queue SET is_active = false WHERE order_id = ANY($1)`,
-        [expiredOrderIds]
-      );
-      
-      // Create notifications for customers
+      await db.query(`UPDATE driver_order_queue SET is_active = false WHERE order_id = ANY($1)`, [expiredOrderIds]);
       for (const order of result.rows) {
-        await this.createNotification(
-          order.customer_id,
-          'customer',
-          'No Drivers Available',
-          'Sorry, no drivers were available to accept your order. Please try again.',
-          'order_expired',
-          { order_id: order.id }
-        );
+        // FIX: Get user ID for notification here as well if needed, similar to above
+        const userRes = await db.query('SELECT user_id FROM customers WHERE id = $1', [order.customer_id]);
+        if(userRes.rows[0]) {
+             await this.createNotification(userRes.rows[0].user_id, 'customer', 'No Drivers Available', 'Sorry, no drivers were available.', 'order_expired', { order_id: order.id });
+        }
       }
     }
-    
     return result.rows;
   }
 }
