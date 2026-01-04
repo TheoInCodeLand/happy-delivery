@@ -50,6 +50,34 @@ exports.updateStatus = async (req, res) => {
   }
 };
 
+// Add this function to your existing controller
+exports.getStats = async (req, res) => {
+  try {
+    const driver = await Driver.findByUserId(req.user.id);
+    
+    if (!driver) {
+      return res.status(404).json({ success: false, error: 'Driver profile not found' });
+    }
+
+    // Logic for dashboard stats
+    const stats = {
+      totalEarnings: parseFloat(driver.total_earnings || 0),
+      todayEarnings: 0, // You can calculate this from earnings table
+      totalDeliveries: parseInt(driver.total_deliveries || 0),
+      averageRating: parseFloat(driver.average_rating || 5.0),
+      isAvailable: driver.is_available
+    };
+
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('Get stats error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 // Get available orders for driver
 exports.getAvailableOrders = async (req, res) => {
   try {
@@ -66,6 +94,74 @@ exports.getAvailableOrders = async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+};
+
+// Add this to your existing driverController.js
+exports.getDriverOrders = async (req, res) => {
+  try {
+    const driver = await Driver.findByUserId(req.user.id);
+    
+    if (!driver) {
+      return res.status(404).json({ success: false, error: 'Driver not found' });
+    }
+
+    // Call a new model method to get history
+    const orders = await Driver.getOrderHistory(driver.id);
+    
+    res.json({
+      success: true,
+      data: orders
+    });
+  } catch (error) {
+    console.error('❌ Get driver orders error:', error.message);
+    res.status(500).json({ success: false, error: 'Server error fetching orders' });
+  }
+};
+
+// Add to driverController.js
+exports.updateVehicleInfo = async (req, res) => {
+  try {
+    const driver = await Driver.findByUserId(req.user.id);
+    if (!driver) {
+      return res.status(404).json({ success: false, error: 'Driver not found' });
+    }
+
+    const updatedDriver = await Driver.updateVehicleInfo(driver.id, req.body);
+    
+    res.json({
+      success: true,
+      data: updatedDriver
+    });
+  } catch (error) {
+    console.error('Update vehicle info error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// Add this to your existing driverController.js
+exports.getDriverProfile = async (req, res) => {
+  try {
+    const driver = await Driver.findByUserId(req.user.id);
+    
+    if (!driver) {
+      return res.status(404).json({ success: false, error: 'Driver profile not found' });
+    }
+
+    // Convert potential string decimals to actual numbers
+    const formattedDriver = {
+      ...driver,
+      average_rating: parseFloat(driver.average_rating || 0),
+      total_earnings: parseFloat(driver.total_earnings || 0)
+    };
+
+    res.json({
+      success: true,
+      data: formattedDriver
+    });
+  } catch (error) {
+    console.error('❌ Get driver profile error:', error.message);
+    res.status(500).json({ success: false, error: 'Server error fetching profile' });
   }
 };
 

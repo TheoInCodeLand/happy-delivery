@@ -12,7 +12,8 @@ const { auth, authorize } = require('../middleware/auth');
 
 // Customer routes
 router.post('/', auth, authorize('customer'), createOrder);
-router.get('/my', auth, authorize('customer'), getMyOrders);
+// router.get('/my', auth, authorize('customer'), getMyOrders);
+router.get('/my', auth, authorize('customer', 'restaurant_manager'), getMyOrders);
 
 // Driver routes
 router.post('/:id/accept', auth, authorize('driver'), acceptOrder);

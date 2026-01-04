@@ -2,56 +2,46 @@ const db = require('../config/database');
 
 class Restaurant {
   // Create restaurant
-  static async create(managerId, restaurantData) {
+  static async create(managerId, data) {
     const {
-      name,
-      description,
-      cuisine_type,
-      phone_number,
-      email,
-      address,
-      lat,
-      lng,
-      opening_hours,
-      delivery_radius_km = 5
-    } = restaurantData;
-    
+      name, description, cuisine_type, address,
+      latitude, longitude, phone_number,
+      opening_hours, preparation_time, 
+      logo_url, cover_url 
+    } = data;
+
+    const cuisineArray = typeof cuisine_type === 'string' 
+    ? cuisine_type.split(',').map(item => item.trim()) 
+    : cuisine_type;
+
     const query = `
       INSERT INTO restaurants (
-        manager_id,
-        name,
-        description,
-        cuisine_type,
-        phone_number,
-        email,
-        address,
-        location,
-        opening_hours,
-        delivery_radius_km
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, POINT($8, $9), $10, $11)
+        manager_id, name, description, cuisine_type, 
+        address, location, phone_number, 
+        opening_hours, preparation_time_minutes, 
+        logo_url, cover_image_url, total_ratings, is_active
+      )
+      VALUES (
+        $1, $2, $3, $4, 
+        $5, ST_SetSRID(ST_MakePoint($7, $6), 4326), -- FIX: Use ST_SetSRID for Geometry
+        $8, $9, $10, $11, $12,
+        5.0, true
+      )
       RETURNING *
     `;
-    
-    const result = await db.query(query, [
-      managerId,
-      name,
-      description,
-      cuisine_type || [],
-      phone_number,
-      email,
-      address,
-      lng, lat,
-      opening_hours,
-      delivery_radius_km
-    ]);
-    
-    // Update manager's restaurant list
-    await this.addRestaurantToManager(managerId, result.rows[0].id);
-    
+
+    const values = [
+      managerId, name, description, cuisine_type,
+      address, latitude, longitude, phone_number,
+      JSON.stringify({ display: opening_hours }), preparation_time, 
+      logo_url || null, cover_url || null
+    ];
+
+    const result = await db.query(query, values);
     return result.rows[0];
   }
 
-  // Add restaurant to manager's list
+  // Add restaurant to manager's lists
   static async addRestaurantToManager(managerId, restaurantId) {
     const query = `
       UPDATE restaurant_managers 
@@ -88,44 +78,57 @@ class Restaurant {
   }
 
   // Search restaurants by location and filters
-  // src/models/Restaurant.js
 
   static async search(lat, lng, filters = {}) {
-    try {
-      const { cuisine, minRating, maxDistance = 10, isOpen = true } = filters;
-      const radius = maxDistance * 1000; 
-      
-      // FIX: Use ST_SetSRID and ST_MakePoint instead of direct casting
-      // Inside Restaurant.js search method
-      let query = `
-        SELECT 
-          r.*,
-          ST_Distance(
-            ST_SetSRID(ST_MakePoint(r.location[0], r.location[1]), 4326)::geography,
-            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
-          ) as distance_meters
-        FROM restaurants r
-        WHERE r.is_active = true
-        AND ST_DWithin(
-          ST_SetSRID(ST_MakePoint(r.location[0], r.location[1]), 4326)::geography,
-          ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
-          $3 -- This is your radius/maxDistance parameter
-        )
-        ORDER BY distance_meters ASC
-      `;
-      // ... remainder of your query logic
-    } catch (error) {
-      console.error('❌ Error in Restaurant.search:', error.message);
-      throw error;
-    }
-  }
+  try {
+    const { cuisine, minRating, maxDistance = 90 } = filters;
+    
+    // Standardize radius to meters (90km = 90000 meters)
+    const radiusMeters = maxDistance * 1000; 
+    
+    let query = `
+      SELECT 
+        r.id, r.name, r.description, r.cuisine_type, r.address, 
+        r.total_ratings, r.logo_url, r.cover_image_url, r.opening_hours, r.preparation_time_minutes,
+        ST_X(r.location::geometry) as longitude, -- Extract as float
+        ST_Y(r.location::geometry) as latitude,  -- Extract as float
+        ST_Distance(
+          r.location::geography,
+          ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+        ) as distance_meters
+      FROM restaurants r
+      WHERE r.is_active = true
+      AND ST_DWithin(
+        r.location::geography,
+        ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+        $3
+      )
+    `;
 
-  // Update restaurant
+    const values = [lng, lat, radiusMeters]; // Always [Longitude, Latitude] for PostGIS
+
+    // Optional: Add cuisine filter if provided
+    if (cuisine) {
+      query += ` AND $4 = ANY(r.cuisine_type)`;
+      values.push(cuisine);
+    }
+
+    query += ` ORDER BY distance_meters ASC`;
+
+    const result = await db.query(query, values);
+    return result.rows;
+
+  } catch (error) {
+    console.error('❌ Error in Restaurant.search:', error.message);
+    throw error;
+  }
+}
+  // Update restaurant details
   static async update(id, updateData) {
     const fields = Object.keys(updateData);
     const values = Object.values(updateData);
     
-    // Handle location specially
+    // Handle location specially if present
     const locationIndex = fields.findIndex(field => field === 'location');
     if (locationIndex !== -1) {
       const [lng, lat] = updateData.location;

@@ -1,7 +1,7 @@
 const db = require('../config/database');
 
 class Menu {
-  // Create menu
+  // Create menu category
   static async create(restaurantId, menuData) {
     const { name, description, is_active = true, display_order = 0 } = menuData;
     
@@ -15,12 +15,30 @@ class Menu {
     return result.rows[0];
   }
 
-  // Get menus by restaurant
+  // Get menus by restaurant with nested items (CRITICAL FIX)
   static async findByRestaurant(restaurantId) {
     const query = `
-      SELECT m.*, 
-             COUNT(mi.id) as item_count,
-             SUM(CASE WHEN mi.is_available = true THEN 1 ELSE 0 END) as available_items
+      SELECT 
+        m.id, m.name, m.description, m.is_active,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', mi.id,
+              'name', mi.name,
+              'description', mi.description,
+              'price', mi.price,
+              'discounted_price', mi.discounted_price,
+              'image_url', mi.image_url,
+              'is_available', mi.is_available,
+              'is_veg', mi.is_veg, -- Ensure you ran the SQL command to add this column!
+              'calories', mi.calories,
+              'preparation_time_minutes', mi.preparation_time_minutes,
+              'ingredients', mi.ingredients,
+              'tags', mi.tags
+            ) ORDER BY mi.created_at
+          ) FILTER (WHERE mi.id IS NOT NULL), 
+          '[]'
+        ) as items
       FROM menus m
       LEFT JOIN menu_items mi ON m.id = mi.menu_id
       WHERE m.restaurant_id = $1
@@ -32,7 +50,7 @@ class Menu {
     return result.rows;
   }
 
-  // Create menu item
+  // Create menu item (Added image_url support)
   static async createMenuItem(menuId, restaurantId, itemData) {
     const {
       name,
@@ -42,28 +60,21 @@ class Menu {
       category,
       tags = [],
       is_available = true,
+      is_veg = false,
       ingredients = [],
       customizations = [],
-      calories,
-      preparation_time_minutes
+      calories = 0,
+      preparation_time_minutes = 15,
+      image_url
     } = itemData;
     
     const query = `
       INSERT INTO menu_items (
-        menu_id,
-        restaurant_id,
-        name,
-        description,
-        price,
-        discounted_price,
-        category,
-        tags,
-        is_available,
-        ingredients,
-        customizations,
-        calories,
-        preparation_time_minutes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        menu_id, restaurant_id, name, description, price, 
+        discounted_price, category, tags, is_available, 
+        is_veg, ingredients, customizations, calories, 
+        preparation_time_minutes, image_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
     `;
     
@@ -77,16 +88,18 @@ class Menu {
       category,
       tags,
       is_available,
+      is_veg,
       JSON.stringify(ingredients),
       JSON.stringify(customizations),
       calories,
-      preparation_time_minutes
+      preparation_time_minutes,
+      image_url
     ]);
     
     return result.rows[0];
   }
 
-  // Get menu items by menu
+  // Get menu items by menu (Standard list)
   static async getMenuItems(menuId, filters = {}) {
     const { category, min_price, max_price, tags, is_available = true } = filters;
     
@@ -132,12 +145,12 @@ class Menu {
     return result.rows;
   }
 
-  // Update menu item
+  // Update menu item details
   static async updateMenuItem(itemId, updateData) {
     const fields = Object.keys(updateData);
     const values = Object.values(updateData);
     
-    // Handle JSON fields
+    // Ensure JSON fields are stringified for PostgreSQL
     const jsonFields = ['ingredients', 'customizations', 'tags'];
     fields.forEach((field, index) => {
       if (jsonFields.includes(field) && typeof values[index] !== 'string') {
@@ -146,13 +159,13 @@ class Menu {
     });
     
     const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
-    const query = `UPDATE menu_items SET ${setClause} WHERE id = $1 RETURNING *`;
+    const query = `UPDATE menu_items SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`;
     
     const result = await db.query(query, [itemId, ...values]);
     return result.rows[0];
   }
 
-  // Update menu item image
+  // Update specific menu item image
   static async updateMenuItemImage(itemId, imageUrl) {
     const query = `
       UPDATE menu_items 
@@ -165,13 +178,12 @@ class Menu {
     return result.rows[0];
   }
 
-  // Search menu items across restaurants
+  // Search menu items (PostGIS distance enabled)
   static async searchItems(searchTerm, lat, lng, radiusKm = 5) {
     const query = `
       SELECT 
         mi.*,
         r.name as restaurant_name,
-        r.address as restaurant_address,
         r.average_rating as restaurant_rating,
         ST_Distance(
           r.location::geography,
@@ -179,20 +191,15 @@ class Menu {
         ) as distance_meters
       FROM menu_items mi
       JOIN restaurants r ON mi.restaurant_id = r.id
-      WHERE (
-        mi.name ILIKE $1 
-        OR mi.description ILIKE $1 
-        OR mi.tags::text ILIKE $1
-      )
+      WHERE (mi.name ILIKE $1 OR mi.description ILIKE $1)
         AND mi.is_available = true
         AND r.is_active = true
-        AND r.is_accepting_orders = true
         AND ST_DWithin(
           r.location::geography,
           ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
           $4 * 1000
         )
-      ORDER BY distance_meters, restaurant_rating DESC
+      ORDER BY distance_meters ASC
       LIMIT 50
     `;
     
@@ -200,5 +207,6 @@ class Menu {
     return result.rows;
   }
 }
+
 
 module.exports = Menu;

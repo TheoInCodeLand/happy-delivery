@@ -1,4 +1,3 @@
-// setup-database.js
 const { Client } = require('pg');
 const fs = require('fs');
 require('dotenv').config();

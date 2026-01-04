@@ -14,11 +14,10 @@ exports.register = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email already registered' });
     }
     
-    // 2. Create the core User record
     const userData = { email, password, role, first_name, last_name, phone_number };
     const user = await User.create(userData);
     
-    // 3. Create the role-specific profile (wrapped in a try-catch to prevent core crash)
+    // 3. Create the role-specific profile (wrapped in a try-catch to prevent core crash).
     let profile;
     try {
       switch (role) {
@@ -34,8 +33,6 @@ exports.register = async (req, res) => {
       }
     } catch (profileError) {
       console.error(`❌ Profile creation failed for ${role}:`, profileError.message);
-      // If profile fails, we should technically handle user cleanup, 
-      // but for now, we return a clear error.
       return res.status(500).json({
         success: false,
         error: `Account created, but ${role} profile failed: ${profileError.message}`

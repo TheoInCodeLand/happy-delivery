@@ -15,6 +15,7 @@ const orderRoutes = require('./src/routes/orderRoutes');
 const driverRoutes = require('./src/routes/driverRoutes');
 const paymentRoutes = require('./src/routes/paymentRoutes');
 const userRoutes = require('./src/routes/userRoutes');
+// const managerRoutes = require('./src/routes/managerRoutes');
 
 // Import middleware
 const { errorHandler } = require('./src/middleware/errorHandler');
@@ -67,7 +68,6 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/users', userRoutes);
-
 // WebSocket setup
 require('./src/socket')(io);
 
@@ -82,7 +82,6 @@ app.use((req, res) => {
   });
 });
 
-// Start server
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
@@ -93,7 +92,7 @@ server.listen(PORT, () => {
 });
 
 process.on('unhandledRejection', (err) => {
-  console.error('❌ CRITICAL UNHANDLED REJECTION:', err);
+  console.error(' CRITICAL UNHANDLED REJECTION:', err);
   if (process.env.NODE_ENV === 'production') {
     server.close(() => process.exit(1));
   }

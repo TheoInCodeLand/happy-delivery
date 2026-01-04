@@ -97,11 +97,9 @@ class Driver {
     const query = `
       SELECT 
         d.*,
-        u.first_name,
-        u.last_name,
-        u.phone_number,
+        u.first_name, u.last_name, u.phone_number,
         ST_Distance(
-          d.current_location::geography,
+          ST_SetSRID(ST_MakePoint(d.current_location[0], d.current_location[1]), 4326)::geography,
           ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
         ) as distance_meters
       FROM drivers d
@@ -109,14 +107,13 @@ class Driver {
       WHERE d.is_available = true
         AND d.current_status = 'available'
         AND ST_DWithin(
-          d.current_location::geography,
+          ST_SetSRID(ST_MakePoint(d.current_location[0], d.current_location[1]), 4326)::geography,
           ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
           $3 * 1000
         )
       ORDER BY distance_meters
       LIMIT 20
     `;
-    
     const result = await db.query(query, [lng, lat, radiusKm]);
     return result.rows;
   }
@@ -139,6 +136,57 @@ class Driver {
     return result.rows;
   }
 
+  // Add this to your Driver class in Driver.js
+  // Add this to your Driver class in Driver.js
+  static async updateVehicleInfo(driverId, vehicleData) {
+    const { 
+      vehicle_type, 
+      vehicle_model, 
+      vehicle_color, 
+      vehicle_registration,
+      driver_license_number 
+    } = vehicleData;
+
+    const query = `
+      UPDATE drivers 
+      SET 
+        vehicle_type = $2,
+        vehicle_model = $3,
+        vehicle_color = $4,
+        vehicle_registration = $5,
+        driver_license_number = $6,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `;
+    
+    const result = await db.query(query, [
+      driverId, 
+      vehicle_type, 
+      vehicle_model, 
+      vehicle_color, 
+      vehicle_registration,
+      driver_license_number
+    ]);
+    return result.rows[0];
+  }
+
+  static async getOrderHistory(driverId) {
+    const query = `
+      SELECT 
+        o.*, 
+        r.name as restaurant_name,
+        r.address as restaurant_address
+      FROM orders o
+      JOIN restaurants r ON o.restaurant_id = r.id
+      WHERE o.driver_id = $1
+      ORDER BY o.placed_at DESC
+    `;
+    
+    const result = await db.query(query, [driverId]);
+    return result.rows;
+  }
+
   // Get available orders for driver
   static async getAvailableOrders(driverId) {
     const query = `
@@ -150,8 +198,8 @@ class Driver {
         c.first_name as customer_first_name,
         c.last_name as customer_last_name,
         ST_Distance(
-          d.current_location::geography,
-          r.location::geography
+          ST_SetSRID(ST_MakePoint(d.current_location[0], d.current_location[1]), 4326)::geography,
+          ST_SetSRID(ST_MakePoint(r.location[0], r.location[1]), 4326)::geography
         ) as distance_to_restaurant,
         EXTRACT(EPOCH FROM (q.expires_at - NOW())) as time_left_seconds
       FROM driver_order_queue q
@@ -167,7 +215,6 @@ class Driver {
       ORDER BY q.created_at ASC
       LIMIT 10
     `;
-    
     const result = await db.query(query, [driverId]);
     return result.rows;
   }
