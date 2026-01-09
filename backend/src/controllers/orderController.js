@@ -6,13 +6,18 @@ const Driver = require('../models/Driver');
 exports.createOrder = async (req, res) => {
   try {
     const customer = await Customer.findByUserId(req.user.id);
-    
-    const order = await Order.create(customer.id, req.body);
-    
-    res.status(201).json({
-      success: true,
-      data: order
-    });
+    const newOrder = await Order.create(customer.id, req.body);
+    const io = req.app.get('io');
+    // Notify drivers about the new order
+    if (io) {
+      console.log("🔔 Emitting new order to drivers...");
+      io.to('drivers').emit('new_order', {
+        orderId: newOrder.id,
+        restaurantName: newOrder.restaurant_name,
+        total: newOrder.total_amount
+      });
+    }
+    res.status(201).json({ success: true, data: newOrder });
   } catch (error) {
     console.error('Create order error:', error);
     res.status(500).json({

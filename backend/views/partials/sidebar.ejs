@@ -1,0 +1,48 @@
+<nav class="sidebar">
+    <div class="sidebar-header">
+        <h3><i class="fas fa-utensils"></i> Restaurant Manager</h3>
+    </div>
+    <ul class="nav flex-column">
+        <li class="nav-item">
+            <a class="nav-link <%= currentPage === 'dashboard' ? 'active' : '' %>" href="/manager/dashboard">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <%= currentPage === 'restaurants' ? 'active' : '' %>" href="/manager/restaurants">
+                <i class="fas fa-store"></i> My Restaurants
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <%= currentPage === 'menus' ? 'active' : '' %>" href="/manager/menus">
+                <i class="fas fa-utensils"></i> Menu Management
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <%= currentPage === 'orders' ? 'active' : '' %>" href="/manager/orders">
+                <i class="fas fa-receipt"></i> Orders
+                <span class="badge bg-danger order-count" id="liveOrderCount">0</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <%= currentPage === 'analytics' ? 'active' : '' %>" href="/manager/analytics">
+                <i class="fas fa-chart-line"></i> Analytics
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <%= currentPage === 'reviews' ? 'active' : '' %>" href="/manager/reviews">
+                <i class="fas fa-star"></i> Reviews
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/manager/settings">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+        </li>
+        <li class="nav-item logout-item">
+            <a class="nav-link text-danger" href="/manager/logout">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </li>
+    </ul>
+</nav>

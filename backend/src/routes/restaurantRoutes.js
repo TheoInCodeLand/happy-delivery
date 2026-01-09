@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const { storage } = require('../config/cloudinary');
 const upload = multer({ storage }); 
-
+const { getHomeFeed } = require('../controllers/restaurantController');
 
 const { 
   createRestaurant,
@@ -17,12 +17,14 @@ const {
   getManagerProfile,
   updateRestaurant,
   getMenuItem,
-  updateMenuItem
+  updateMenuItem,
+  searchFood
 } = require('../controllers/restaurantController');
 const { auth, authorize } = require('../middleware/auth');
 
 // 1. PUBLIC ROUTES - Specific paths first
 router.get('/search', searchRestaurants);
+router.get('/search/food', searchFood);
 
 router.get('/stats', auth, authorize('restaurant_manager'), getStats); 
 router.get('/profile', auth, authorize('restaurant_manager'), getManagerProfile); // MUST BE ABOVE /:id
@@ -47,6 +49,7 @@ router.get('/:restaurantId/menus', getRestaurantMenus);
 
 router.post('/', auth, authorize('restaurant_manager'), createRestaurant);
 router.put('/:id', auth, authorize('restaurant_manager'), updateRestaurant);
+router.get('/feed/home', getHomeFeed);
 router.post('/:restaurantId/menus', auth, authorize('restaurant_manager'), createMenu);
 router.post('/:restaurantId/menus/:menuId/items', auth, authorize('restaurant_manager'), addMenuItem);
 

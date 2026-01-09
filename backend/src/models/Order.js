@@ -420,14 +420,14 @@ class Order {
 
   // Get orders for user based on role
   static async getOrdersByUser(userId, userRole, filters = {}) {
-    // ... (paste your existing getOrdersByUser code here) ...
+    // ... (paste your existing getOrdersByUser code here)
     let baseQuery = '';
     const params = [];
     
     switch (userRole) {
       case 'customer':
         baseQuery = `
-          SELECT o.*, r.name as restaurant_name
+          SELECT o.*, r.logo_url as restaurant_logo, r.name as restaurant_name
           FROM orders o
           JOIN restaurants r ON o.restaurant_id = r.id
           WHERE o.customer_id = (SELECT id FROM customers WHERE user_id = $1)

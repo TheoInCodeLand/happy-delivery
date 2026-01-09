@@ -1,0 +1,219 @@
+<%- include('../layouts/main', { title: 'Order Management', currentPage: 'orders' }) %>
+
+<div class="orders-page">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Order Management</h2>
+        <div>
+            <select class="form-select d-inline-block w-auto me-2" id="restaurantFilter">
+                <option value="all">All Restaurants</option>
+                <% restaurants.forEach(restaurant => { %>
+                <option value="<%= restaurant.id %>"><%= restaurant.name %></option>
+                <% }) %>
+            </select>
+            <select class="form-select d-inline-block w-auto me-2" id="statusFilter">
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="accepted_by_driver">Accepted</option>
+                <option value="order_ready">Ready</option>
+                <option value="on_the_way">On the way</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+            <input type="date" class="form-control d-inline-block w-auto me-2" id="dateFilter">
+            <button class="btn btn-primary" onclick="loadOrders()">Apply Filters</button>
+        </div>
+    </div>
+
+    <!-- Live Orders Counter -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="alert alert-info">
+                <i class="fas fa-bell"></i> 
+                <span id="liveOrdersCounter">0</span> active orders right now
+                <span class="badge bg-danger ms-2" id="urgentOrders">0 urgent</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="ordersTable">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Restaurant</th>
+                            <th>Items</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Order Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersList">
+                        <!-- Filled by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <nav>
+                <ul class="pagination justify-content-center" id="pagination">
+                    <!-- Filled by JavaScript -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div class="modal fade" id="orderDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Order Details - <span id="modalOrderNumber"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="orderDetailsContent">
+                    <!-- Filled by JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="updateStatusBtn">Update Status</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentPage = 1;
+    let totalPages = 1;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        loadOrders();
+        setupWebSocket();
+    });
+    
+    function loadOrders(page = 1) {
+        const restaurantId = document.getElementById('restaurantFilter').value;
+        const status = document.getElementById('statusFilter').value;
+        const date = document.getElementById('dateFilter').value;
+        
+        fetch(`/api/manager/orders?page=${page}&restaurant=${restaurantId}&status=${status}&date=${date}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderOrders(data.orders);
+                    updatePagination(data.totalPages, data.currentPage);
+                }
+            });
+    }
+    
+    function renderOrders(orders) {
+        const tbody = document.getElementById('ordersList');
+        tbody.innerHTML = '';
+        
+        if (orders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">No orders found</td></tr>';
+            return;
+        }
+        
+        orders.forEach(order => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>#${order.order_number || order.id.substring(0, 8)}</td>
+                <td>${order.customer_name || 'Unknown'}</td>
+                <td>${order.restaurant_name}</td>
+                <td>${order.item_count || 'N/A'} items</td>
+                <td>₹${order.total_amount}</td>
+                <td><span class="badge ${getStatusBadgeClass(order.status)}">${order.status.replace(/_/g, ' ')}</span></td>
+                <td>${new Date(order.placed_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                <td>
+                    <button class="btn btn-sm btn-info" onclick="viewOrderDetails('${order.id}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    ${order.status === 'order_ready' ? '<button class="btn btn-sm btn-success ms-1" onclick="markAsReady(\'' + order.id + '\')"><i class="fas fa-check"></i></button>' : ''}
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+    
+    function getStatusBadgeClass(status) {
+        const classes = {
+            'pending': 'bg-warning',
+            'accepted_by_driver': 'bg-info',
+            'order_ready': 'bg-success',
+            'on_the_way': 'bg-primary',
+            'delivered': 'bg-secondary',
+            'cancelled': 'bg-danger'
+        };
+        return classes[status] || 'bg-secondary';
+    }
+    
+    function viewOrderDetails(orderId) {
+        fetch(`/api/manager/orders/${orderId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const order = data.order;
+                    const items = data.items || [];
+                    
+                    document.getElementById('modalOrderNumber').textContent = order.order_number || order.id.substring(0, 8);
+                    
+                    let itemsHtml = '<ul class="list-group mb-3">';
+                    items.forEach(item => {
+                        itemsHtml += `
+                            <li class="list-group-item d-flex justify-content-between">
+                                <div>
+                                    <h6>${item.item_name}</h6>
+                                    <small class="text-muted">${item.quantity} x ₹${item.unit_price}</small>
+                                </div>
+                                <span>₹${item.quantity * item.unit_price}</span>
+                            </li>
+                        `;
+                    });
+                    itemsHtml += '</ul>';
+                    
+                    const content = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Customer Information</h6>
+                                <p><strong>Name:</strong> ${order.customer_name}</p>
+                                <p><strong>Phone:</strong> ${order.customer_phone}</p>
+                                <p><strong>Delivery Address:</strong> ${order.delivery_address}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Order Information</h6>
+                                <p><strong>Status:</strong> <span class="badge ${getStatusBadgeClass(order.status)}">${order.status.replace(/_/g, ' ')}</span></p>
+                                <p><strong>Total Amount:</strong> ₹${order.total_amount}</p>
+                                <p><strong>Order Time:</strong> ${new Date(order.placed_at).toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <hr>
+                        <h6>Order Items</h6>
+                        ${itemsHtml}
+                        <div class="alert alert-light">
+                            <strong>Special Instructions:</strong> ${order.special_instructions || 'None'}
+                        </div>
+                    `;
+                    
+                    document.getElementById('orderDetailsContent').innerHTML = content;
+                    
+                    // Update modal button
+                    const updateBtn = document.getElementById('updateStatusBtn');
+                    if (order.status === 'pending' || order.status === 'accepted_by_driver') {
+                        updateBtn.style.display = 'inline-block';
+                        updateBtn.onclick = function() { updateOrderStatus(order.id); };
+                    } else {
+                        updateBtn.style.display = 'none';
+                    }
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+                    modal.show();
+                }
+            });
+    }
+</script>

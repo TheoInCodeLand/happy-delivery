@@ -302,3 +302,52 @@ exports.updateMenuItem = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+exports.getHomeFeed = async (req, res) => {
+  try {
+    const [menus, items] = await Promise.all([
+      Menu.getDiscoveryMenus(8),
+      Menu.getAllDiscoveryItems(10) // Fetches all items, no discount needed
+    ]);
+
+    // Log the counts on the server side for debugging
+    console.log(`Feed generated: ${menus.length} menus, ${items.length} items.`);
+
+    res.json({
+      success: true,
+      data: { 
+        menus, 
+        discounts: items // Keeping key as 'discounts' to avoid breaking frontend state
+      }
+    });
+  } catch (error) {
+    console.error('Home feed error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+exports.searchFood = async (req, res) => {
+  try {
+    const { query, lat, lng } = req.query;
+    
+    if (!query || query.length < 2) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // Call the static method from your Menu model
+    const items = await Menu.searchItems(
+      query, 
+      parseFloat(lat), 
+      parseFloat(lng), 
+      20 // Default 20km radius for food search
+    );
+
+    res.json({
+      success: true,
+      data: items
+    });
+  } catch (error) {
+    console.error('Search food error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

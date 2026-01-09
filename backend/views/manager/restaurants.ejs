@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Manager - My Restaurants</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #166088;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container-fluid {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Header */
+        .page-header {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 5px solid var(--primary-color);
+        }
+        
+        .page-header h2 {
+            margin: 0;
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+        
+        .page-header p {
+            margin: 5px 0 0 0;
+            color: #666;
+            font-size: 0.95rem;
+        }
+        
+        /* Search and Filters */
+        .search-filters {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+        }
+        
+        /* Restaurant Grid */
+        .restaurant-grid {
+            position: relative;
+            min-height: 300px;
+        }
+        
+        /* Restaurant Cards */
+        .restaurant-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            height: 100%;
+            border: none;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .restaurant-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+        
+        .restaurant-card.active {
+            border: 3px solid var(--primary-color);
+        }
+        
+        .restaurant-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        }
+        
+        .restaurant-image {
+            height: 180px;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        
+        .restaurant-actions {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .restaurant-card:hover .restaurant-actions {
+            opacity: 1;
+        }
+        
+        .action-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .action-btn.view {
+            background: rgba(74, 111, 165, 0.9);
+            color: white;
+        }
+        
+        .action-btn.edit {
+            background: rgba(40, 167, 69, 0.9);
+            color: white;
+        }
+        
+        .action-btn.delete {
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+        }
+        
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .restaurant-status {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .restaurant-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+            padding: 20px;
+            color: white;
+        }
+        
+        .restaurant-overlay h5 {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        
+        .restaurant-overlay p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        
+        .card-body {
+            padding: 25px;
+        }
+        
+        .cuisine-badge {
+            display: inline-block;
+            background: rgba(74, 111, 165, 0.1);
+            color: var(--primary-color);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .restaurant-details {
+            margin-bottom: 20px;
+        }
+        
+        .detail-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .detail-item i {
+            color: var(--primary-color);
+            width: 20px;
+            margin-right: 10px;
+            margin-top: 2px;
+        }
+        
+        .restaurant-stats {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-top: 1px solid #eee;
+            border-bottom: 1px solid #eee;
+            margin: 20px 0;
+        }
+        
+        .stat-item {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .stat-item strong {
+            display: block;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .stat-item span {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .card-footer {
+            background: white;
+            border-top: 1px solid #eee;
+            padding: 20px 25px;
+        }
+        
+        /* Modal Styling */
+        .modal-xl {
+            max-width: 1200px;
+        }
+        
+        .modal-content {
+            border-radius: 20px;
+            border: none;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 25px 30px;
+            border: none;
+        }
+        
+        .modal-header .btn-close {
+            filter: invert(1);
+            opacity: 0.8;
+        }
+        
+        .modal-header .btn-close:hover {
+            opacity: 1;
+        }
+        
+        .modal-body {
+            padding: 30px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid #eee;
+        }
+        
+        /* Form Styling */
+        .form-label {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .form-label .required {
+            color: var(--danger-color);
+            font-size: 0.8rem;
+        }
+        
+        .form-control, .form-select, .form-control-file {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 12px 15px;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(74, 111, 165, 0.15);
+        }
+        
+        .form-control.is-invalid {
+            border-color: var(--danger-color);
+        }
+        
+        .invalid-feedback {
+            color: var(--danger-color);
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+        
+        .form-check-input {
+            width: 1.2em;
+            height: 1.2em;
+        }
+        
+        .form-check-input:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .input-group-text {
+            background-color: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-right: none;
+        }
+        
+        /* Tabs */
+        .nav-tabs {
+            border-bottom: 2px solid #dee2e6;
+            margin-bottom: 25px;
+        }
+        
+        .nav-tabs .nav-link {
+            border: none;
+            color: #666;
+            font-weight: 500;
+            padding: 12px 25px;
+            border-radius: 8px 8px 0 0;
+            margin-right: 5px;
+            transition: all 0.3s;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            color: var(--primary-color);
+            background-color: rgba(74, 111, 165, 0.05);
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            background-color: white;
+            border-bottom: 3px solid var(--primary-color);
+        }
+        
+        /* Image Upload */
+        .image-upload-container {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background-color: #f8f9fa;
+        }
+        
+        .image-upload-container:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(74, 111, 165, 0.05);
+        }
+        
+        .image-upload-container.dragover {
+            border-color: var(--success-color);
+            background-color: rgba(40, 167, 69, 0.05);
+        }
+        
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 10px;
+            object-fit: cover;
+            margin: 15px auto;
+            display: none;
+        }
+        
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        
+        .toast {
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            border: none;
+        }
+        
+        /* Loading Spinner */
+        .spinner-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state h4 {
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .empty-state p {
+            color: #999;
+            max-width: 400px;
+            margin: 0 auto 25px auto;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .restaurant-stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .stat-item {
+                text-align: left;
+            }
+            
+            .modal-body {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="spinner-container" id="loadingSpinner">
+        <div class="spinner"></div>
+    </div>
+    
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="page-header">
+            <div>
+                <h2><i class="fas fa-store me-2"></i> Restaurant Management</h2>
+                <p>Add, edit, and manage all your restaurants</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/manager/dashboard" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Dashboard
+                </a>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#restaurantModal" onclick="openAddModal()">
+                    <i class="fas fa-plus me-1"></i> Add New Restaurant
+                </button>
+                <a href="/manager/logout" class="btn btn-outline-danger">
+                    <i class="fas fa-sign-out-alt me-1"></i> Logout
+                </a>
+            </div>
+        </div>
+        
+        <!-- Search and Filters -->
+        <div class="search-filters">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Search restaurants by name, cuisine, or address...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="orderFilter">
+                        <option value="name_asc">Sort by Name (A-Z)</option>
+                        <option value="name_desc">Sort by Name (Z-A)</option>
+                        <option value="recent">Most Recent</option>
+                        <option value="oldest">Oldest</option>
+                        <option value="rating_high">Highest Rating</option>
+                        <option value="rating_low">Lowest Rating</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                        <i class="fas fa-redo me-1"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Restaurant Grid -->
+        <div class="restaurant-grid" id="restaurantsGrid">
+            <div class="row g-4" id="restaurantsList">
+                <% if (restaurants.length === 0) { %>
+                    <div class="col-12">
+                        <div class="empty-state">
+                            <i class="fas fa-store"></i>
+                            <h4>No restaurants yet</h4>
+                            <p>Add your first restaurant to start accepting orders and managing your menu</p>
+                            <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#restaurantModal" onclick="openAddModal()">
+                                <i class="fas fa-plus me-2"></i> Add Your First Restaurant
+                            </button>
+                        </div>
+                    </div>
+                <% } else { %>
+                    <% restaurants.forEach(restaurant => { %>
+                    <div class="col-xl-4 col-lg-6 col-md-6" data-restaurant-id="<%= restaurant.id %>">
+                        <div class="restaurant-card card h-100" onclick="selectRestaurant('<%= restaurant.id %>')">
+                            <!-- Restaurant Image -->
+                            <div class="restaurant-image" 
+                                 style="background-image: url('<%= restaurant.cover_image_url || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80' %>')">
+                                <div class="restaurant-actions">
+                                    <button class="action-btn view" onclick="event.stopPropagation(); viewRestaurant('<%= restaurant.id %>')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="action-btn edit" onclick="event.stopPropagation(); editRestaurant('<%= restaurant.id %>')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="action-btn delete" onclick="event.stopPropagation(); deleteRestaurant('<%= restaurant.id %>')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="restaurant-status">
+                                    <span class="badge <%= restaurant.is_active ? 'bg-success' : 'bg-danger' %>">
+                                        <i class="fas fa-<%= restaurant.is_active ? 'check-circle' : 'times-circle' %> me-1"></i>
+                                        <%= restaurant.is_active ? 'Active' : 'Inactive' %>
+                                    </span>
+                                    <span class="badge <%= restaurant.is_accepting_orders ? 'bg-info' : 'bg-warning' %>">
+                                        <%= restaurant.is_accepting_orders ? 'Accepting Orders' : 'Not Accepting' %>
+                                    </span>
+                                </div>
+                                <div class="restaurant-overlay">
+                                    <h5><%= restaurant.name %></h5>
+                                    <p>
+                                        <i class="fas fa-star text-warning"></i> 
+                                        <%= restaurant.average_rating || '0.0' %> • 
+                                        <%= restaurant.total_ratings || '0' %> reviews
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Card Body -->
+                            <div class="card-body">
+                                <div class="cuisine-badge">
+                                    <i class="fas fa-utensils me-1"></i>
+                                    <%= restaurant.cuisine_type ? restaurant.cuisine_type.replace(/_/g, ' ') : 'Multi-cuisine' %>
+                                </div>
+                                
+                                <div class="restaurant-details">
+                                    <div class="detail-item">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <div class="text-truncate" title="<%= restaurant.address %>">
+                                            <%= restaurant.address %>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="detail-item">
+                                        <i class="fas fa-phone"></i>
+                                        <div>
+                                            <%= restaurant.phone_number || 'Not specified' %>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="detail-item">
+                                        <i class="fas fa-clock"></i>
+                                        <div>
+                                            <%= restaurant.opening_hours?.display || '9:00 AM - 11:00 PM' %>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="restaurant-stats">
+                                    <div class="stat-item">
+                                        <strong><%= restaurant.total_orders || '0' %></strong>
+                                        <span>Orders</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <strong>₹<%= restaurant.total_revenue || '0' %></strong>
+                                        <span>Revenue</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <strong><%= restaurant.preparation_time_minutes || '20' %></strong>
+                                        <span>Min Prep</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        Created: <%= new Date(restaurant.created_at).toLocaleDateString() %>
+                                    </small>
+                                    <small class="text-muted">
+                                        <i class="fas fa-id-card me-1"></i>
+                                        ID: <%= restaurant.id.substring(0, 8) %>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <% }) %>
+                <% } %>
+            </div>
+        </div>
+        
+        <!-- Toast Notification -->
+        <div class="toast-container">
+            <div class="toast" id="notificationToast" role="alert">
+                <div class="toast-header">
+                    <strong class="me-auto" id="toastTitle">Notification</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body" id="toastMessage">
+                    <!-- Message appears here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Restaurant Modal (Add/Edit) -->
+    <div class="modal fade" id="restaurantModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">
+                        <i class="fas fa-plus-circle me-2"></i> Add New Restaurant
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="restaurantForm" enctype="multipart/form-data">
+                        <input type="hidden" id="restaurantId" name="id">
+                        <input type="hidden" name="manager_id" value="<%= manager.manager_id || '' %>">
+                        
+                        <ul class="nav nav-tabs" id="restaurantTabs">
+                            <li class="nav-item">
+                                <button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#basicInfo">
+                                    <i class="fas fa-info-circle me-2"></i> Basic Info
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#location">
+                                    <i class="fas fa-map-marker-alt me-2"></i> Location
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#settings">
+                                    <i class="fas fa-cog me-2"></i> Settings
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#images">
+                                    <i class="fas fa-images me-2"></i> Images
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content mt-4">
+                            <!-- Basic Info Tab -->
+                            <div class="tab-pane fade show active" id="basicInfo">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="row">
+                                            <div class="col-md-12 mb-3">
+                                                <label class="form-label">
+                                                    Restaurant Name
+                                                    <span class="required">* Required</span>
+                                                </label>
+                                                <input type="text" class="form-control" id="name" name="name" required
+                                                       placeholder="e.g., Mumbai Kitchen">
+                                                <div class="invalid-feedback">Please enter a restaurant name.</div>
+                                            </div>
+                                            
+                                            <div class="col-md-12 mb-3">
+                                                <label class="form-label">Description</label>
+                                                <textarea class="form-control" id="description" name="description" 
+                                                          rows="4" placeholder="Tell customers about your restaurant..."></textarea>
+                                            </div>
+                                            
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Cuisine Types</label>
+                                                <select class="form-select select2" id="cuisine_type" name="cuisine_type" multiple>
+                                                    <option value="indian">Indian</option>
+                                                    <option value="chinese">Chinese</option>
+                                                    <option value="italian">Italian</option>
+                                                    <option value="mexican">Mexican</option>
+                                                    <option value="fast_food">Fast Food</option>
+                                                    <option value="vegetarian">Vegetarian</option>
+                                                    <option value="non_vegetarian">Non-Vegetarian</option>
+                                                    <option value="south_indian">South Indian</option>
+                                                    <option value="north_indian">North Indian</option>
+                                                    <option value="biryani">Biryani</option>
+                                                    <option value="thai">Thai</option>
+                                                    <option value="japanese">Japanese</option>
+                                                    <option value="korean">Korean</option>
+                                                    <option value="arabic">Arabic</option>
+                                                    <option value="continental">Continental</option>
+                                                </select>
+                                            </div>
+                                            
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">
+                                                    Phone Number
+                                                    <span class="required">* Required</span>
+                                                </label>
+                                                <input type="tel" class="form-control" id="phone_number" name="phone_number" 
+                                                       pattern="[0-9]{10}" required placeholder="10-digit mobile number">
+                                                <div class="invalid-feedback">Please enter a valid 10-digit phone number.</div>
+                                            </div>
+                                            
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Email Address</label>
+                                                <input type="email" class="form-control" id="email" name="email" 
+                                                       placeholder="restaurant@example.com">
+                                            </div>
+                                            
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Website</label>
+                                                <input type="url" class="form-control" id="website" name="website" 
+                                                       placeholder="https://your-restaurant.com">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <div class="card h-100">
+                                            <div class="card-header">
+                                                <h6 class="mb-0"><i class="fas fa-clock me-2"></i> Opening Hours</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Monday - Friday</label>
+                                                    <input type="text" class="form-control" name="weekday_hours" 
+                                                           value="10:00 AM - 10:00 PM">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Saturday</label>
+                                                    <input type="text" class="form-control" name="saturday_hours" 
+                                                           value="10:00 AM - 11:00 PM">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Sunday</label>
+                                                    <input type="text" class="form-control" name="sunday_hours" 
+                                                           value="10:00 AM - 10:00 PM">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Location Tab -->
+                            <div class="tab-pane fade" id="location">
+                                <div class="row">
+                                    <div class="col-md-8 mb-3">
+                                        <label class="form-label">
+                                            Full Address
+                                            <span class="required">* Required</span>
+                                        </label>
+                                        <textarea class="form-control" id="address" name="address" rows="3" 
+                                                  required placeholder="Full address including city, state, and PIN code"></textarea>
+                                        <div class="invalid-feedback">Please enter the restaurant address.</div>
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">City</label>
+                                        <input type="text" class="form-control" id="city" name="city" placeholder="City">
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">State</label>
+                                        <input type="text" class="form-control" id="state" name="state" placeholder="State">
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">ZIP/PIN Code</label>
+                                        <input type="text" class="form-control" id="zip_code" name="zip_code" 
+                                               pattern="[0-9]{6}" placeholder="6-digit PIN code">
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Country</label>
+                                        <input type="text" class="form-control" id="country" name="country" value="India">
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Latitude</label>
+                                        <div class="input-group">
+                                            <input type="number" step="any" class="form-control" id="latitude" name="latitude" 
+                                                   placeholder="e.g., 19.0760">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="getCurrentLocation()">
+                                                <i class="fas fa-location-crosshairs"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Longitude</label>
+                                        <div class="input-group">
+                                            <input type="number" step="any" class="form-control" id="longitude" name="longitude" 
+                                                   placeholder="e.g., 72.8777">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="getCurrentLocation()">
+                                                <i class="fas fa-location-crosshairs"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-12">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6 class="mb-0"><i class="fas fa-map me-2"></i> Map Preview</h6>
+                                            </div>
+                                            <div class="card-body text-center">
+                                                <div id="mapPreview" style="height: 200px; background: #f8f9fa; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                                    <p class="text-muted mb-0">
+                                                        <i class="fas fa-map-marker-alt fa-2x"></i><br>
+                                                        Coordinates will appear here
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Settings Tab -->
+                            <div class="tab-pane fade" id="settings">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card h-100">
+                                            <div class="card-header">
+                                                <h6 class="mb-0"><i class="fas fa-business-time me-2"></i> Business Settings</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Preparation Time (minutes)</label>
+                                                    <input type="number" class="form-control" id="preparation_time_minutes" 
+                                                           name="preparation_time_minutes" value="20" min="5" max="120">
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label">Minimum Order Amount (₹)</label>
+                                                    <input type="number" class="form-control" id="min_order_amount" 
+                                                           name="min_order_amount" value="0" min="0">
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label">Delivery Radius (km)</label>
+                                                    <input type="number" class="form-control" id="delivery_radius" 
+                                                           name="delivery_radius" value="5" min="1" max="20" step="0.5">
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label">Packing Charges (₹)</label>
+                                                    <input type="number" class="form-control" id="packing_charges" 
+                                                           name="packing_charges" value="0" min="0">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="card h-100">
+                                            <div class="card-header">
+                                                <h6 class="mb-0"><i class="fas fa-toggle-on me-2"></i> Status Settings</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                                    <label class="form-check-label" for="is_active">
+                                                        Restaurant is Active
+                                                    </label>
+                                                </div>
+                                                
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" id="is_accepting_orders" name="is_accepting_orders" checked>
+                                                    <label class="form-check-label" for="is_accepting_orders">
+                                                        Accepting Orders
+                                                    </label>
+                                                </div>
+                                                
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" id="is_verified" name="is_verified">
+                                                    <label class="form-check-label" for="is_verified">
+                                                        Restaurant is Verified
+                                                    </label>
+                                                </div>
+                                                
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" id="is_featured" name="is_featured">
+                                                    <label class="form-check-label" for="is_featured">
+                                                        Featured Restaurant
+                                                    </label>
+                                                </div>
+                                                
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" id="allow_preorder" name="allow_preorder">
+                                                    <label class="form-check-label" for="allow_preorder">
+                                                        Allow Pre-orders
+                                                    </label>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label">Tax Percentage (%)</label>
+                                                    <input type="number" class="form-control" id="tax_percentage" 
+                                                           name="tax_percentage" value="5" min="0" max="50" step="0.1">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Images Tab -->
+                            <div class="tab-pane fade" id="images">
+                                <div class="row">
+                                    <div class="col-md-6 mb-4">
+                                        <label class="form-label">Logo Image</label>
+                                        <div class="image-upload-container" id="logoUpload" onclick="document.getElementById('logoInput').click()">
+                                            <i class="fas fa-image fa-3x text-muted mb-3"></i>
+                                            <p class="mb-2">Click to upload logo</p>
+                                            <p class="text-muted small mb-0">Recommended: 500x500px, JPG/PNG</p>
+                                            <input type="file" class="d-none" id="logoInput" name="logo" accept="image/*">
+                                            <img id="logoPreview" class="image-preview" src="" alt="Logo Preview">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-4">
+                                        <label class="form-label">Cover Image</label>
+                                        <div class="image-upload-container" id="coverUpload" onclick="document.getElementById('coverInput').click()">
+                                            <i class="fas fa-image fa-3x text-muted mb-3"></i>
+                                            <p class="mb-2">Click to upload cover</p>
+                                            <p class="text-muted small mb-0">Recommended: 1200x400px, JPG/PNG</p>
+                                            <input type="file" class="d-none" id="coverInput" name="cover_image" accept="image/*">
+                                            <img id="coverPreview" class="image-preview" src="" alt="Cover Preview">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-12">
+                                        <label class="form-label">Gallery Images</label>
+                                        <div class="image-upload-container" id="galleryUpload" onclick="document.getElementById('galleryInput').click()">
+                                            <i class="fas fa-images fa-3x text-muted mb-3"></i>
+                                            <p class="mb-2">Click to upload gallery images</p>
+                                            <p class="text-muted small mb-0">You can upload multiple images at once</p>
+                                            <input type="file" class="d-none" id="galleryInput" name="gallery_images" accept="image/*" multiple>
+                                            <div id="galleryPreviews" class="d-flex flex-wrap gap-2 mt-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="saveBtn" onclick="saveRestaurant()">
+                        <i class="fas fa-save me-1"></i> Save Restaurant
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmTitle"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="confirmMessage"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmActionBtn">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        // Global variables
+        let currentRestaurantId = null;
+        let restaurantsData = [];
+        const API_BASE = '/api/restaurants';
+        
+        // Toast notification system
+        const toast = new bootstrap.Toast(document.getElementById('notificationToast'));
+        
+        function showNotification(title, message, type = 'info') {
+            const toastTitle = document.getElementById('toastTitle');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            toastTitle.textContent = title;
+            toastMessage.textContent = message;
+            
+            // Set color based on type
+            const toastHeader = document.querySelector('#notificationToast .toast-header');
+            const types = {
+                'success': 'bg-success text-white',
+                'error': 'bg-danger text-white',
+                'warning': 'bg-warning text-dark',
+                'info': 'bg-info text-white'
+            };
+            
+            toastHeader.className = `toast-header ${types[type] || 'bg-info text-white'}`;
+            toast.show();
+        }
+        
+        // Loading spinner
+        function showLoading() {
+            document.getElementById('loadingSpinner').style.display = 'flex';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingSpinner').style.display = 'none';
+        }
+        
+        // Initialize Select2
+        $(document).ready(function() {
+            $('.select2').select2({
+                placeholder: 'Select cuisine types',
+                allowClear: true,
+                width: '100%'
+            });
+            
+            // Load restaurants data
+            loadRestaurants();
+            
+            // Setup event listeners
+            setupEventListeners();
+        });
+        
+        function setupEventListeners() {
+            // Search input
+            document.getElementById('searchInput').addEventListener('input', filterRestaurants);
+            
+            // Status filter
+            document.getElementById('statusFilter').addEventListener('change', filterRestaurants);
+            
+            // Sort filter
+            document.getElementById('orderFilter').addEventListener('change', filterRestaurants);
+            
+            // Image upload previews
+            setupImageUploads();
+            
+            // Form validation
+            document.getElementById('restaurantForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveRestaurant();
+            });
+        }
+        
+        function setupImageUploads() {
+            // Logo upload
+            document.getElementById('logoInput').addEventListener('change', function(e) {
+                previewImage(e.target.files[0], 'logoPreview');
+            });
+            
+            // Cover upload
+            document.getElementById('coverInput').addEventListener('change', function(e) {
+                previewImage(e.target.files[0], 'coverPreview');
+            });
+            
+            // Gallery upload
+            document.getElementById('galleryInput').addEventListener('change', function(e) {
+                const galleryPreviews = document.getElementById('galleryPreviews');
+                galleryPreviews.innerHTML = '';
+                
+                Array.from(e.target.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.className = 'img-thumbnail';
+                        img.style.width = '100px';
+                        img.style.height = '100px';
+                        img.style.objectFit = 'cover';
+                        galleryPreviews.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+            
+            // Drag and drop
+            ['logoUpload', 'coverUpload', 'galleryUpload'].forEach(id => {
+                const container = document.getElementById(id);
+                container.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.classList.add('dragover');
+                });
+                
+                container.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('dragover');
+                });
+                
+                container.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('dragover');
+                    
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        if (id === 'galleryUpload') {
+                            document.getElementById('galleryInput').files = files;
+                            const event = new Event('change');
+                            document.getElementById('galleryInput').dispatchEvent(event);
+                        } else {
+                            const inputId = id === 'logoUpload' ? 'logoInput' : 'coverInput';
+                            document.getElementById(inputId).files = files;
+                            const event = new Event('change');
+                            document.getElementById(inputId).dispatchEvent(event);
+                        }
+                    }
+                });
+            });
+        }
+        
+        function previewImage(file, previewId) {
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById(previewId);
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        // Load all restaurants
+        async function loadRestaurants() {
+            try {
+                showLoading();
+                
+                // In a real implementation, fetch from your API
+                // For now, use the data passed from server
+                restaurantsData = [];
+                
+                // Convert EJS data to array
+                document.querySelectorAll('[data-restaurant-id]').forEach(card => {
+                    const restaurantId = card.getAttribute('data-restaurant-id');
+                    const restaurant = {
+                        id: restaurantId,
+                        // Add other properties from data attributes or parse from card
+                    };
+                    restaurantsData.push(restaurant);
+                });
+                
+                hideLoading();
+            } catch (error) {
+                hideLoading();
+                console.error('Error loading restaurants:', error);
+                showNotification('Error', 'Failed to load restaurants', 'error');
+            }
+        }
+        
+        // Filter and sort restaurants
+        function filterRestaurants() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const orderFilter = document.getElementById('orderFilter').value;
+            
+            const cards = document.querySelectorAll('[data-restaurant-id]');
+            
+            cards.forEach(card => {
+                const cardText = card.textContent.toLowerCase();
+                const isActive = card.querySelector('.bg-success') !== null;
+                
+                let shouldShow = true;
+                
+                // Search filter
+                if (searchTerm && !cardText.includes(searchTerm)) {
+                    shouldShow = false;
+                }
+                
+                // Status filter
+                if (statusFilter) {
+                    if (statusFilter === 'active' && !isActive) {
+                        shouldShow = false;
+                    } else if (statusFilter === 'inactive' && isActive) {
+                        shouldShow = false;
+                    }
+                }
+                
+                card.style.display = shouldShow ? 'block' : 'none';
+            });
+            
+            // Sort functionality
+            if (orderFilter) {
+                sortRestaurants(orderFilter);
+            }
+        }
+        
+        function sortRestaurants(order) {
+            const container = document.getElementById('restaurantsList');
+            const cards = Array.from(container.querySelectorAll('[data-restaurant-id]'));
+            
+            cards.sort((a, b) => {
+                const aText = a.textContent.toLowerCase();
+                const bText = b.textContent.toLowerCase();
+                const aRating = parseFloat(a.querySelector('.fa-star').parentNode.textContent.split('•')[0].trim()) || 0;
+                const bRating = parseFloat(b.querySelector('.fa-star').parentNode.textContent.split('•')[0].trim()) || 0;
+                
+                switch (order) {
+                    case 'name_asc':
+                        return aText.localeCompare(bText);
+                    case 'name_desc':
+                        return bText.localeCompare(aText);
+                    case 'rating_high':
+                        return bRating - aRating;
+                    case 'rating_low':
+                        return aRating - bRating;
+                    default:
+                        return 0;
+                }
+            });
+            
+            // Reorder cards
+            cards.forEach(card => container.appendChild(card));
+        }
+        
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('orderFilter').value = 'name_asc';
+            filterRestaurants();
+        }
+        
+        function selectRestaurant(restaurantId) {
+            // Remove active class from all cards
+            document.querySelectorAll('.restaurant-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            
+            // Add active class to selected card
+            const selectedCard = document.querySelector(`[data-restaurant-id="${restaurantId}"] .restaurant-card`);
+            if (selectedCard) {
+                selectedCard.classList.add('active');
+            }
+        }
+        
+        // Open modal for adding new restaurant
+        function openAddModal() {
+            const modal = new bootstrap.Modal(document.getElementById('restaurantModal'));
+            const form = document.getElementById('restaurantForm');
+            
+            // Reset form
+            form.reset();
+            document.getElementById('restaurantId').value = '';
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus-circle me-2"></i> Add New Restaurant';
+            document.getElementById('saveBtn').innerHTML = '<i class="fas fa-save me-1"></i> Save Restaurant';
+            
+            // Reset Select2
+            $('#cuisine_type').val(null).trigger('change');
+            
+            // Reset image previews
+            document.getElementById('logoPreview').style.display = 'none';
+            document.getElementById('coverPreview').style.display = 'none';
+            document.getElementById('galleryPreviews').innerHTML = '';
+            
+            // Reset validation
+            form.classList.remove('was-validated');
+            
+            // Show first tab
+            const firstTab = document.querySelector('#restaurantTabs .nav-link');
+            firstTab.click();
+            
+            modal.show();
+        }
+        
+        // View restaurant details
+        async function viewRestaurant(restaurantId) {
+            try {
+                showLoading();
+                
+                // Fetch restaurant details from API
+                const response = await fetch(`${API_BASE}/${restaurantId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const restaurant = data.restaurant;
+                    
+                    // Show details in a modal
+                    const modal = new bootstrap.Modal(document.getElementById('viewRestaurantModal'));
+                    document.getElementById('viewRestaurantName').textContent = restaurant.name;
+                    
+                    const content = `
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-4">
+                                    <img src="${restaurant.logo_url || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80'}" 
+                                         alt="${restaurant.name}" class="img-fluid rounded">
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <h6>Complete Details</h6>
+                                <pre class="bg-light p-3 rounded">${JSON.stringify(restaurant, null, 2)}</pre>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.getElementById('viewRestaurantContent').innerHTML = content;
+                    modal.show();
+                } else {
+                    showNotification('Error', 'Failed to load restaurant details', 'error');
+                }
+            } catch (error) {
+                console.error('Error viewing restaurant:', error);
+                showNotification('Error', 'Failed to load restaurant details', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Edit restaurant
+        async function editRestaurant(restaurantId) {
+            try {
+                showLoading();
+                
+                // Fetch restaurant details
+                const response = await fetch(`${API_BASE}/${restaurantId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const restaurant = data.restaurant;
+                    
+                    // Populate form
+                    const form = document.getElementById('restaurantForm');
+                    form.reset();
+                    
+                    // Set form values
+                    document.getElementById('restaurantId').value = restaurant.id;
+                    document.getElementById('modalTitle').innerHTML = `<i class="fas fa-edit me-2"></i> Edit Restaurant: ${restaurant.name}`;
+                    document.getElementById('saveBtn').innerHTML = '<i class="fas fa-save me-1"></i> Update Restaurant';
+                    
+                    // Basic Info
+                    document.getElementById('name').value = restaurant.name || '';
+                    document.getElementById('description').value = restaurant.description || '';
+                    document.getElementById('phone_number').value = restaurant.phone_number || '';
+                    document.getElementById('email').value = restaurant.email || '';
+                    document.getElementById('website').value = restaurant.website || '';
+                    
+                    // Cuisine types
+                    if (restaurant.cuisine_type) {
+                        const cuisines = restaurant.cuisine_type.split(',').map(c => c.trim());
+                        $('#cuisine_type').val(cuisines).trigger('change');
+                    }
+                    
+                    // Location
+                    document.getElementById('address').value = restaurant.address || '';
+                    document.getElementById('city').value = restaurant.city || '';
+                    document.getElementById('state').value = restaurant.state || '';
+                    document.getElementById('zip_code').value = restaurant.zip_code || '';
+                    document.getElementById('country').value = restaurant.country || 'India';
+                    document.getElementById('latitude').value = restaurant.latitude || '';
+                    document.getElementById('longitude').value = restaurant.longitude || '';
+                    
+                    // Settings
+                    document.getElementById('preparation_time_minutes').value = restaurant.preparation_time_minutes || 20;
+                    document.getElementById('min_order_amount').value = restaurant.min_order_amount || 0;
+                    document.getElementById('delivery_radius').value = restaurant.delivery_radius || 5;
+                    document.getElementById('packing_charges').value = restaurant.packing_charges || 0;
+                    document.getElementById('tax_percentage').value = restaurant.tax_percentage || 5;
+                    
+                    // Status toggles
+                    document.getElementById('is_active').checked = restaurant.is_active !== false;
+                    document.getElementById('is_accepting_orders').checked = restaurant.is_accepting_orders !== false;
+                    document.getElementById('is_verified').checked = restaurant.is_verified || false;
+                    document.getElementById('is_featured').checked = restaurant.is_featured || false;
+                    document.getElementById('allow_preorder').checked = restaurant.allow_preorder || false;
+                    
+                    // Images
+                    if (restaurant.logo_url) {
+                        document.getElementById('logoPreview').src = restaurant.logo_url;
+                        document.getElementById('logoPreview').style.display = 'block';
+                    }
+                    
+                    if (restaurant.cover_image_url) {
+                        document.getElementById('coverPreview').src = restaurant.cover_image_url;
+                        document.getElementById('coverPreview').style.display = 'block';
+                    }
+                    
+                    // Show modal
+                    const modal = new bootstrap.Modal(document.getElementById('restaurantModal'));
+                    modal.show();
+                    
+                } else {
+                    showNotification('Error', 'Failed to load restaurant data', 'error');
+                }
+            } catch (error) {
+                console.error('Error editing restaurant:', error);
+                showNotification('Error', 'Failed to load restaurant data', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Delete restaurant
+        function deleteRestaurant(restaurantId) {
+            currentRestaurantId = restaurantId;
+            
+            const restaurantName = document.querySelector(`[data-restaurant-id="${restaurantId}"] .restaurant-overlay h5`).textContent;
+            
+            document.getElementById('confirmTitle').textContent = 'Delete Restaurant';
+            document.getElementById('confirmMessage').innerHTML = `
+                <p>Are you sure you want to delete <strong>${restaurantName}</strong>?</p>
+                <p class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i> This action cannot be undone. All menu items and order history will be permanently deleted.</p>
+            `;
+            
+            document.getElementById('confirmActionBtn').onclick = confirmDelete;
+            
+            const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            modal.show();
+        }
+        
+        async function confirmDelete() {
+            try {
+                showLoading();
+                
+                // Close confirmation modal
+                const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
+                confirmModal.hide();
+                
+                // Delete restaurant via API
+                const response = await fetch(`${API_BASE}/${currentRestaurantId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Success', 'Restaurant deleted successfully', 'success');
+                    
+                    // Remove from DOM
+                    const card = document.querySelector(`[data-restaurant-id="${currentRestaurantId}"]`);
+                    if (card) {
+                        card.remove();
+                    }
+                    
+                    // Update restaurantsData
+                    restaurantsData = restaurantsData.filter(r => r.id !== currentRestaurantId);
+                    
+                    // Show empty state if no restaurants left
+                    if (restaurantsData.length === 0) {
+                        document.getElementById('restaurantsList').innerHTML = `
+                            <div class="col-12">
+                                <div class="empty-state">
+                                    <i class="fas fa-store"></i>
+                                    <h4>No restaurants found</h4>
+                                    <p>Add your first restaurant to get started</p>
+                                    <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#restaurantModal" onclick="openAddModal()">
+                                        <i class="fas fa-plus me-2"></i> Add Restaurant
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    showNotification('Error', data.error || 'Failed to delete restaurant', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting restaurant:', error);
+                showNotification('Error', 'Failed to delete restaurant', 'error');
+            } finally {
+                hideLoading();
+                currentRestaurantId = null;
+            }
+        }
+        
+        // Save restaurant (Create or Update)
+        async function saveRestaurant() {
+            const form = document.getElementById('restaurantForm');
+            
+            // Validate form
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                showNotification('Error', 'Please fill in all required fields correctly', 'error');
+                return;
+            }
+            
+            try {
+                showLoading();
+                
+                // Prepare form data
+                const formData = new FormData(form);
+                const restaurantId = document.getElementById('restaurantId').value;
+                
+                // Convert cuisine array to string
+                const cuisines = $('#cuisine_type').val();
+                if (cuisines) {
+                    formData.set('cuisine_type', cuisines.join(','));
+                }
+                
+                // Prepare opening hours object
+                const openingHours = {
+                    weekday: formData.get('weekday_hours'),
+                    saturday: formData.get('saturday_hours'),
+                    sunday: formData.get('sunday_hours')
+                };
+                formData.set('opening_hours', JSON.stringify(openingHours));
+                
+                // Remove temporary fields
+                ['weekday_hours', 'saturday_hours', 'sunday_hours'].forEach(field => formData.delete(field));
+                
+                // Convert booleans
+                ['is_active', 'is_accepting_orders', 'is_verified', 'is_featured', 'allow_preorder'].forEach(field => {
+                    formData.set(field, formData.get(field) === 'on' ? 'true' : 'false');
+                });
+                
+                // Determine API endpoint and method
+                const url = restaurantId ? `${API_BASE}/${restaurantId}` : API_BASE;
+                const method = restaurantId ? 'PUT' : 'POST';
+                
+                // Send request
+                const response = await fetch(url, {
+                    method: method,
+                    body: formData,
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const action = restaurantId ? 'updated' : 'created';
+                    showNotification('Success', `Restaurant ${action} successfully`, 'success');
+                    
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('restaurantModal'));
+                    modal.hide();
+                    
+                    // Reload page to show updated data
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showNotification('Error', data.error || `Failed to ${restaurantId ? 'update' : 'create'} restaurant`, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving restaurant:', error);
+                showNotification('Error', 'Failed to save restaurant: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Get current location
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                showNotification('Info', 'Getting your current location...', 'info');
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        document.getElementById('latitude').value = position.coords.latitude.toFixed(6);
+                        document.getElementById('longitude').value = position.coords.longitude.toFixed(6);
+                        showNotification('Success', 'Location fetched successfully!', 'success');
+                        
+                        // Update map preview
+                        updateMapPreview();
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        showNotification('Error', 'Failed to get location: ' + error.message, 'error');
+                    }
+                );
+            } else {
+                showNotification('Error', 'Geolocation is not supported by your browser', 'error');
+            }
+        }
+        
+        function updateMapPreview() {
+            const lat = document.getElementById('latitude').value;
+            const lng = document.getElementById('longitude').value;
+            
+            if (lat && lng) {
+                const mapPreview = document.getElementById('mapPreview');
+                mapPreview.innerHTML = `
+                    <iframe 
+                        width="100%" 
+                        height="100%" 
+                        frameborder="0" 
+                        scrolling="no" 
+                        marginheight="0" 
+                        marginwidth="0" 
+                        src="https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed"
+                        style="border-radius: 8px;">
+                    </iframe>
+                `;
+            }
+        }
+        
+        // Get JWT token (you'll need to implement this based on your auth system)
+        function getToken() {
+            // This is a placeholder - implement based on your authentication system
+            return localStorage.getItem('token') || '';
+        }
+        
+        // Listen for coordinates changes to update map
+        document.getElementById('latitude').addEventListener('input', updateMapPreview);
+        document.getElementById('longitude').addEventListener('input', updateMapPreview);
+    </script>
+</body>
+</html>

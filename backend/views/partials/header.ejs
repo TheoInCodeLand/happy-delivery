@@ -1,0 +1,104 @@
+<header class="page-header">
+    <div class="header-left">
+        <button class="sidebar-toggle d-md-none">
+            <i class="fas fa-bars"></i>
+        </button>
+        <h4 class="mb-0"><%= title %></h4>
+    </div>
+    <div class="header-right">
+        <div class="user-info">
+            <div class="user-avatar">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="user-details">
+                <strong><%= manager.first_name %> <%= manager.last_name %></strong>
+                <small>Restaurant Manager</small>
+            </div>
+        </div>
+        <div class="notifications">
+            <button class="btn btn-light position-relative" id="notificationBtn">
+                <i class="fas fa-bell"></i>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationCount">0</span>
+            </button>
+            <div class="notification-dropdown" id="notificationDropdown">
+                <div class="notification-header">
+                    <h6>Notifications</h6>
+                    <button class="btn btn-sm btn-link" onclick="markAllAsRead()">Mark all as read</button>
+                </div>
+                <div class="notification-list" id="notificationList">
+                    <!-- Notifications will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<script>
+    // Toggle notifications dropdown
+    document.getElementById('notificationBtn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        const dropdown = document.getElementById('notificationDropdown');
+        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        loadNotifications();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function() {
+        document.getElementById('notificationDropdown').style.display = 'none';
+    });
+
+    // Load notifications
+    function loadNotifications() {
+        fetch('/api/manager/notifications')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderNotifications(data.notifications);
+                    updateNotificationCount(data.unreadCount);
+                }
+            });
+    }
+
+    function renderNotifications(notifications) {
+        const list = document.getElementById('notificationList');
+        if (notifications.length === 0) {
+            list.innerHTML = '<div class="notification-item text-center text-muted py-3">No notifications</div>';
+            return;
+        }
+
+        list.innerHTML = notifications.map(notification => `
+            <div class="notification-item ${notification.read ? '' : 'unread'}" onclick="markAsRead('${notification.id}')">
+                <div class="notification-icon">
+                    <i class="fas ${getNotificationIcon(notification.type)}"></i>
+                </div>
+                <div class="notification-content">
+                    <strong>${notification.title}</strong>
+                    <p>${notification.body}</p>
+                    <small>${formatTimeAgo(notification.created_at)}</small>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function getNotificationIcon(type) {
+        const icons = {
+            'new_order': 'fa-shopping-cart',
+            'order_update': 'fa-sync',
+            'review': 'fa-star',
+            'payment': 'fa-credit-card',
+            'system': 'fa-info-circle'
+        };
+        return icons[type] || 'fa-bell';
+    }
+
+    function formatTimeAgo(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+        
+        if (seconds < 60) return 'Just now';
+        if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+        return `${Math.floor(seconds / 86400)} days ago`;
+    }
+</script>
