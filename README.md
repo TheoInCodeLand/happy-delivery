@@ -3,7 +3,8 @@ mobile-app/
 │   ├── (auth)/
 │   │   ├── login.tsx
 │   │   ├── register.tsx
-│   │   └── welcome.tsx
+│   │   ├── welcome.tsx
+|   |   └── _layout.tsx
 │   ├── (customer)/
 │   │   ├── home/
 │   │   │   ├── index.tsx
@@ -26,6 +27,7 @@ mobile-app/
 │   │   │   ├── index.tsx
 │   │   │   └── [id].tsx
 │   │   ├── earnings/
+|   |   |   ├── vehicle.tsx
 │   │   │   └── index.tsx
 │   │   ├── profile/
 │   │   │   └── index.tsx
@@ -51,46 +53,31 @@ mobile-app/
 │   ├── common/
 │   │   ├── Button.tsx
 │   │   ├── Input.tsx
-│   │   ├── Card.tsx
-│   │   ├── Header.tsx
-│   │   ├── Loader.tsx
-│   │   └── Modal.tsx
 │   ├── customer/
-│   │   ├── RestaurantCard.tsx
-│   │   ├── MenuItem.tsx
-│   │   ├── CartItem.tsx
-│   │   └── OrderCard.tsx
-│   ├── driver/
-│   │   ├── OrderCard.tsx
-│   │   └── EarningsCard.tsx
-│   └── manager/
 │       ├── RestaurantCard.tsx
+│       ├── MenuItem.tsx
+│       ├── CartItem.tsx
 │       └── OrderCard.tsx
 ├── constants/
 │   ├── colors.ts
+|   ├── theme.ts
 │   ├── api.ts
 │   └── config.ts
 ├── hooks/
-│   ├── useAuth.ts
+│   ├── useAuth.tsx
 │   ├── useLocation.ts
 │   ├── useSocket.ts
-│   └── useNotifications.ts
 ├── services/
 │   ├── api.ts
 │   ├── auth.ts
+|   ├── manager.ts
 │   ├── restaurant.ts
 │   ├── order.ts
 │   ├── driver.ts
-│   └── notification.ts
+│   └── menu.ts
 ├── store/
-│   ├── authStore.ts
 │   ├── cartStore.ts
-│   ├── orderStore.ts
-│   └── index.ts
-├── utils/
-│   ├── helpers.ts
-│   ├── validators.ts
-│   └── notifications.ts
+│   
 ├── assets/
 │   ├── images/
 │   ├── icons/
