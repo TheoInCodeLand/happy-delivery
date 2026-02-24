@@ -11,27 +11,6 @@
 
 <h3><b>A scalable, multi-platform PERN stack ecosystem featuring a Customer App, Driver App, and Web Dashboard, engineered for real-time order tracking and geospatial data filtering.</b></h3>
 
-<a href="#live-demo"><kbd> 
-
-
- 📱 View Mobile Apps 
-
-
- </kbd></a> 
-<a href="#architecture"><kbd> 
-
-
- 🧠 View Architecture 
-
-
- </kbd></a> 
-<a href="#installation"><kbd> 
-
-
- ⚙️ Quick Install 
-
-
- </kbd></a>
 
 
 
