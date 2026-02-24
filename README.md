@@ -44,6 +44,10 @@ Most personal projects are simple CRUD apps. I wanted to tackle the complexity o
 <p></p>
 </div>
 
+<br>
+<br>
+<br>
+
 🏗️ Architectural Decisions & "The Why"
 I approach application development with a focus on separation of concerns, scalability, and performance.
 
