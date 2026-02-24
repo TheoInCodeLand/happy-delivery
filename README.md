@@ -41,7 +41,7 @@ Most personal projects are simple CRUD apps. I wanted to tackle the complexity o
 
 <div align="center">
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4520-a447-11eb-908a-139a6edaec5c.gif" alt="App Demo GIF Placeholder" width="80%" style="border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"/>
-<p><i>(Replace this placeholder with a GIF showing an order placed on the Customer App instantly pinging the Driver App)</i></p>
+<p></p>
 </div>
 
 🏗️ Architectural Decisions & "The Why"
