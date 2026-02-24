@@ -10,30 +10,6 @@
 
 <h3><b>Architected to synchronize multi-role dashboards and automate inventory management via Machine Learning, saving over 15 administrative hours per week.</b></h3>
 
-<a href="#live-demo"><kbd> 
-
-
- 🌍 Explore Live Demo 
-
-
- </kbd></a> 
-<a href="#architecture"><kbd> 
-
-
- 🧠 View Architecture 
-
-
- </kbd></a> 
-<a href="#installation"><kbd> 
-
-
- ⚙️ Quick Install 
-
-
- </kbd></a>
-
-
-
 <h4><b>Engineered With</b></h4>
 <a href="https://skillicons.dev">
 <img src="https://skillicons.dev/icons?i=nodejs,express,postgres,python,scikit,js,html,css,git&perline=10" alt="Tech Stack" />
